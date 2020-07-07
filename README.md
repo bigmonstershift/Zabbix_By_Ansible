@@ -44,3 +44,29 @@ sudo cp -r Zabbix_By_Ansible/* /etc/ansible
 5. 各変数  
 インベントリにてホストグループ毎に定義  
 変数を展開する時はダブルクォーテーションでくくる
+
+# Zabbix-agent
+
+1. 権限  
+rootユーザにならずにbecomeディレクティブの値をyesにするとsudoが実行できるようになる。
+
+2. 鍵  
+ssh用の鍵を以下の場所に格納する。
+```
+.ssh/private.pem
+格納ディレクトリ:700
+鍵ファイル:600
+```
+
+3. zabbix_agentd.conf  
+インベントファイルの変数を設定する
+```
+./hosts
+各IPアドレスなどを記入する
+```
+※現在はJinja2によりインベントリファイルにIPとパスを記載するだけでよい。
+実行するときはチェックオプションでテストするのも忘れず
+```
+# ansible-playbook -i hosts start.yml -C
+```
+

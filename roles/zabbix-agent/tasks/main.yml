@@ -1,0 +1,27 @@
+- name: packages update
+  yum: name=* state=latest
+
+- name: download  zabbix-agent 4.0 repo
+  yum:
+    name: http://repo.zabbix.com/zabbix/4.0/rhel/7/x86_64/zabbix-agent-4.0.14-1.el7.x86_64.rpm
+    state: present
+
+- name: install zabbix-agent
+  yum:
+    name: zabbix-agent
+    state: present
+
+- name: copy zabbix_agentd.conf
+  template:
+    src: /etc/ansible/roles/zabbix-agent/files/zabbix_agentd.j2
+    dest: /etc/zabbix/zabbix_agentd.conf
+
+- name: disable selinux
+  selinux: state=disabled
+  register: selinux
+
+- name: start zabbix-agent
+  systemd:
+    name: zabbix-agent
+    state: started
+    enabled: yes
