@@ -1,0 +1,15 @@
+[zabbix-server]
+localhost
+
+[zabbix-server:vars]
+DB_PASS=s@@@tETp@3@N
+
+[zabbix-agents]
+172.31.0.208
+
+[zabbix-agents:vars]
+ansible_port=22
+ansible_user=centos
+ansible_ssh_private_key_file=.ssh/private.pem
+zabbix_server_ip=172.31.3.193
+zabbix_agent_ip=172.31.0.208

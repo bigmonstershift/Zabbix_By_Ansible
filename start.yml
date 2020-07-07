@@ -1,0 +1,9 @@
+- hosts: zabbix-agents
+  become: yes
+  roles:
+    -  zabbix-agent
+
+- hosts: zabbix-server
+  connection: local
+  roles:
+    - zabbix-server

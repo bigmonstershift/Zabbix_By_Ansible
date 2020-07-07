@@ -1,0 +1,103 @@
+- name: download epel-release, remi, mysql repositorys
+  yum:
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+  with_items:
+      - { name: 'epel-release', state: 'latest' }
+      - { name: 'http://rpms.famillecollet.com/enterprise/remi-release-7.rpm', state: 'present' }
+      - { name: 'https://dev.mysql.com/get/mysql80-community-release-el7-1.noarch.rpm', state: 'present' }
+
+- name: copy remi.repo, remi-php72.repo
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+      - { src: 'remi.repo', dest: '/etc/yum.repos.d/remi.repo' }
+      - { src: 'remi-php72.repo', dest: '/etc/yum.repos.d/remi-php72.repo' }
+
+- name: import remi gpg-key
+  rpm_key:
+    state: present
+    key: http://rpms.famillecollet.com/RPM-GPG-KEY-remi
+
+- name: delete mariadb
+  yum:
+    name: mariadb-libs
+    state: removed
+
+- name: install mysql
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+      - mysql-community-devel
+      - mysql-community-server
+      - MySQL-python
+
+- name: copy my.cnf
+  copy:
+    src: my.cnf
+    dest: /etc/my.cnf
+    mode: 0644
+
+- name: enable mysql
+  systemd:
+    name: mysqld
+    state: restarted
+    enabled: yes
+
+- name: get root password
+  shell: "grep 'A temporary password is generated for root@localhost' /var/log/mysqld.log | awk -F ' ' '{print $(NF)}'"
+  register: root_password
+
+- name: update expired root user password
+  command: mysql --user root --password="{{ root_password.stdout }}" --connect-expired-password --execute='ALTER USER "root"@"localhost" IDENTIFIED BY "{{ DB_PASS }}";'
+  ignore_errors: yes
+
+- name: create mysql client user
+  mysql_user:
+    name: zabbix
+    password: "{{ DB_PASS }}"
+    priv: "*.*:ALL,GRANT"
+    host: localhost
+    state: present
+    login_user: root
+    login_password: "{{ DB_PASS }}"
+
+- name: download zabbix 4.0 repo
+  yum:
+    name: https://repo.zabbix.com/zabbix/4.0/rhel/7/x86_64/zabbix-release-4.0-1.el7.noarch.rpm
+    state: present
+
+- name: install zabbix 4.0
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+      - zabbix-server-mysql
+      - zabbix-web-mysql
+      - zabbix-web-japanese
+      - zabbix-agent
+      - zabbix-get
+
+- name: create db for zabbix
+  shell: |
+    mysql -u root -p"{{ DB_PASS }}" < /etc/ansible/roles/zabbix-server/files/CreateDB.sql
+    cd /usr/share/doc/zabbix-server-mysql-4*
+    zcat create.sql.gz | mysql -u zabbix -p"{{ DB_PASS }}" zabbix
+- name: copy config files of zabbix
+  copy: src="{{ item.src}}" dest="{{ item.dest }}" mode="{{ item.mode }}"
+  with_items:
+      - { src: 'zabbix_server.conf', dest: '/etc/zabbix/zabbix_server.conf', mode: '0640' }
+      - { src: 'zabbix.conf', dest: '/etc/httpd/conf.d/zabbix.conf', mode: '0644' }
+      - { src: 'php.ini', dest: '/etc/php.ini', mode: '0644' }
+
+- name: Start zabbix_server, zabbix_agent, httpd service start
+  systemd:
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+    enabled: "{{ item.enabled }}"
+  with_items:
+      - { name: 'zabbix-server', state: 'started', enabled: 'yes' }
+      - { name: 'httpd', state: 'started', enabled: 'yes' }
+      - { name: 'zabbix-agent', state: 'started', enabled: 'yes' }
