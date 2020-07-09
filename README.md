@@ -10,15 +10,14 @@
 
 1. git cloen  
 ```
-$ git clone -b jinja2 https://github.com/ahegaowpeace/Zabbix_By_Ansible.git
+git clone https://github.com/bigmonstershift/Zabbix_By_Ansible.git
 ```
 
 2. タイムゾーン  
-OSのタイムゾーン変更も忘れないで
-※OSのタイムゾーンを変更しなくても、コンフィグで指定していれば自動で変えてくれるらしい。
+~~OSのタイムゾーンを変更する。~~
+※OSのタイムゾーンを変更しなくても、コンフィグで指定していれば自動で変えてくれる。
 
 3. FireWall  
-firewalldの設定は自動化されていない。awsでやるならセキュリティグループの設定が必要になる。  
 
 - 10050/tcp
 - 10051/tcp
@@ -26,24 +25,25 @@ firewalldの設定は自動化されていない。awsでやるならセキュ�
 
 加えてサーバ側はSELinuxをOFFにする。
 ```
-# setenforce 0
+setenforce 0
 ```
 
 4. Ansible  
 Ansibleをインストール。
 ```
-# yum -y install epel-release
-# yum -y install ansible
+yum -y update
+yum -y install epel-release
+yum -y install ansible
 ```
 展開する場所は下記を参照。
 ```
-sudo cp -r Zabbix_By_Ansible/* /etc/ansible
-※ansible.cfg以外を上書きでコピーしたらいいと思います。
+cp -r Zabbix_By_Ansible/* /etc/ansible
+※ansible.cfgはコピーする必要はありません。
 ```
 
 5. 各変数  
-インベントリにてホストグループ毎に定義  
-変数を展開する時はダブルクォーテーションでくくる
+インベントリファイルにてホストグループ毎に定義。  
+変数を展開する時はダブルクォーテーションでくくる。
 
 # Zabbix-agent
 
@@ -53,20 +53,33 @@ rootユーザにならずにbecomeディレクティブの値をyesにするとs
 2. 鍵  
 ssh用の鍵を以下の場所に格納する。
 ```
-.ssh/private.pem
+/etc/ansible/.ssh/private.pem
 格納ディレクトリ:700
 鍵ファイル:600
 ```
 
-3. zabbix_agentd.conf  
-インベントファイルの変数を設定する
+3. FireWall   
+
+- 10050/tcp
+- 10051/tcp
+
+4. zabbix_agentd.conf  
+インベントファイルの変数を設定する。
 ```
 ./hosts
 各IPアドレスなどを記入する
 ```
-※現在はJinja2によりインベントリファイルにIPとパスを記載するだけでよい。
-実行するときはチェックオプションでテストするのも忘れず
+実行するときは`-C`オプションでテスト出来る。
 ```
-# ansible-playbook -i hosts start.yml -C
+ansible-playbook -i hosts start.yml -C
 ```
+
+# プレイブック実行後
+`http://【ZabbixServerHostAddress】/zabbix`へアクセス。  
+初回ログイン時アカパス↓。
+```
+ユーザ名：Admin
+パスワード：zabbix
+```
+<img width="1440" alt="host" src="https://user-images.githubusercontent.com/53789788/87028164-2d684300-c219-11ea-9b40-6c7358f27daf.png">
 
